@@ -1,0 +1,87 @@
+{
+    "model_name": "catboost_credit_risk",
+    "threshold": 0.4762968274967872,
+    "required_features_count": 20,
+    "features": [
+        {
+            "name": "AMT_ANNUITY",
+            "type": "number"
+        },
+        {
+            "name": "AMT_GOODS_PRICE",
+            "type": "number"
+        },
+        {
+            "name": "DAYS_BIRTH",
+            "type": "number"
+        },
+        {
+            "name": "DAYS_EMPLOYED",
+            "type": "number"
+        },
+        {
+            "name": "DAYS_LAST_PHONE_CHANGE",
+            "type": "number"
+        },
+        {
+            "name": "EXT_SOURCE_1",
+            "type": "number"
+        },
+        {
+            "name": "EXT_SOURCE_2",
+            "type": "number"
+        },
+        {
+            "name": "EXT_SOURCE_3",
+            "type": "number"
+        },
+        {
+            "name": "OCCUPATION_TYPE",
+            "type": "string"
+        },
+        {
+            "name": "REGION_RATING_CLIENT_W_CITY",
+            "type": "number"
+        },
+        {
+            "name": "active_rate",
+            "type": "number"
+        },
+        {
+            "name": "approval_rate",
+            "type": "number"
+        },
+        {
+            "name": "avg_days_credit",
+            "type": "number"
+        },
+        {
+            "name": "avg_debt_ratio",
+            "type": "number"
+        },
+        {
+            "name": "avg_payment_ratio_y",
+            "type": "number"
+        },
+        {
+            "name": "avg_utilization",
+            "type": "number"
+        },
+        {
+            "name": "late_rate",
+            "type": "number"
+        },
+        {
+            "name": "recent_credit_days",
+            "type": "number"
+        },
+        {
+            "name": "rejection_rate",
+            "type": "number"
+        },
+        {
+            "name": "total_paid",
+            "type": "number"
+        }
+    ]
+}
