@@ -1,19 +1,29 @@
 ```
 └── 📁credit-scoring-app
+    └── 📁frontend
     └── 📁gateway
+        └── 📁schema
+            ├── catboost_production_bundle.json
+        ├── Dockerfile
         ├── go.mod
+        ├── go.sum
         ├── main.go
     └── 📁ml-service
         └── 📁models
+            ├── catboost_production_bundle.joblib
         └── 📁src
             ├── __init__.py
+            ├── feature_selection.py
             ├── pipeline.py
             ├── preprocessing.py
         ├── .python-version
+        ├── Dockerfile
         ├── main.py
         ├── pyproject.toml
         ├── README.md
         ├── uv.lock
     ├── .gitignore
-    └── docker.yml
+    ├── docker-compose.yaml
+    ├── FolderSturcture.md
+    └── README.md
 ```

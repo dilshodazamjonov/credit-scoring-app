@@ -9,12 +9,16 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 
+
 # 1. Path Setup
 # Ensure the directory containing 'src' is in the Python path so Joblib 
 # can find Preprocessor and FinalInferencePipeline during deserialization.
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.append(current_dir)
+
+threshold = float(os.getenv("RISK_THRESHOLD", "0.46"))  # Default threshold if not set in env
+is_debug = os.getenv("APP_ENV").lower() == "developement"
 
 # 2. Logging Setup
 logging.basicConfig(level=logging.INFO)
@@ -96,9 +100,7 @@ async def predict(request: ScoringRequest):
         # 2. Inference via the Pipeline wrapper
         # The pipeline handles: Preprocessing -> IV Filtering -> Selection -> Scaling -> CatBoost
         bundle = model_assets["bundle"]
-        probability = float(bundle.predict_prob(input_df)[0])
-        
-        threshold = 0.46  
+        probability = float(bundle.predict_prob(input_df)[0])  
         
         return ScoringResponse(
             probability=round(probability, 4),

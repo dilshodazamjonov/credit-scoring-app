@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loan Application — CreditCore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- ── Header ─────────────────────────────────────────────── -->
+    <header id="app-header">
+      <div class="header-inner">
+        <div class="brand">
+          <div class="brand-icon" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1"  y="1"  width="5" height="5" rx="1.5" fill="currentColor"/>
+              <rect x="8"  y="1"  width="5" height="5" rx="1.5" fill="currentColor" opacity=".45"/>
+              <rect x="1"  y="8"  width="5" height="5" rx="1.5" fill="currentColor" opacity=".45"/>
+              <rect x="8"  y="8"  width="5" height="5" rx="1.5" fill="currentColor"/>
+            </svg>
+          </div>
+          <span class="brand-name">CreditCore</span>
+        </div>
+        <span class="status-pill" id="api-status">
+          <span class="status-dot"></span>
+          Live · localhost:3000
+        </span>
+      </div>
+    </header>
+
+    <!-- ── Main ───────────────────────────────────────────────── -->
+    <main id="main-content">
+
+      <!-- Page title -->
+      <div class="page-title" id="page-title">
+        <h1>Loan Application</h1>
+        <p>Fill in your financial details for an instant AI-powered credit decision.</p>
+      </div>
+
+      <!-- Test Scenarios -->
+      <div class="scenarios-row" id="scenarios-bar">
+        <span class="scenarios-label">Test with sample data</span>
+        <div class="scenarios-btns">
+          <button class="btn-scenario btn-good" id="btn-good" type="button">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+              <circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M4 6.5l2 2 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Good Credit
+          </button>
+          <button class="btn-scenario btn-risk" id="btn-risk" type="button">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+              <path d="M6.5 1.5L12 11.5H1L6.5 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+              <path d="M6.5 5v2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              <circle cx="6.5" cy="9.5" r=".7" fill="currentColor"/>
+            </svg>
+            High Risk
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Form Card ──────────────────────────────────────── -->
+      <div class="card" id="form-card">
+        <form id="loan-form" novalidate autocomplete="off">
+
+          <!-- Section A: Financial -->
+          <div class="form-section">
+            <header class="section-head">
+              <span class="section-title">Financial Details</span>
+              <span class="section-meta" id="num-field-count">19 fields</span>
+            </header>
+            <div class="form-grid" id="grid-number"></div>
+          </div>
+
+          <div class="card-rule"></div>
+
+          <!-- Section B: Profile -->
+          <div class="form-section">
+            <header class="section-head">
+              <span class="section-title">Applicant Profile</span>
+              <span class="section-meta">1 field</span>
+            </header>
+            <div class="form-grid form-grid-single" id="grid-string"></div>
+          </div>
+
+          <!-- Form Footer -->
+          <footer class="form-footer">
+            <span class="footer-note">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.2"/>
+                <path d="M6 5v3.5M6 3.5v.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+              </svg>
+              Processed in real-time. No data is stored.
+            </span>
+            <button class="btn-submit" id="btn-submit" type="submit" aria-live="polite">
+              <span class="btn-label">Analyse Application</span>
+              <span class="btn-spinner" aria-hidden="true"></span>
+            </button>
+          </footer>
+
+          <!-- Inline API error -->
+          <div class="form-error" id="form-error" role="alert" aria-live="assertive"></div>
+
+        </form>
+      </div>
+
+      <!-- ── Result Card ────────────────────────────────────── -->
+      <div class="card result-card" id="result-card" role="region" aria-label="Decision result" aria-live="polite">
+
+        <!-- Top: verdict -->
+        <div class="result-top" id="result-top">
+          <div class="result-icon" id="result-icon" aria-hidden="true">
+            <svg class="icon-check" viewBox="0 0 22 22" fill="none">
+              <path d="M4 11l5 5 9-9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <svg class="icon-x" viewBox="0 0 22 22" fill="none">
+              <path d="M5 5l12 12M17 5L5 17" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="result-decision" id="result-decision">—</div>
+            <div class="result-sub" id="result-sub">—</div>
+          </div>
+          <div class="result-badge" id="result-badge" aria-hidden="true"></div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="result-stats">
+          <div class="stat">
+            <span class="stat-value" id="stat-score">—</span>
+            <span class="stat-label">Risk Score</span>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat">
+            <span class="stat-value stat-threshold" id="stat-thresh">—</span>
+            <span class="stat-label">Threshold</span>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat">
+            <span class="stat-value" id="stat-margin">—</span>
+            <span class="stat-label">Margin</span>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat">
+            <span class="stat-value stat-model">CatBoost</span>
+            <span class="stat-label">Model</span>
+          </div>
+        </div>
+
+        <!-- Risk meter -->
+        <div class="meter-section">
+          <div class="meter-header">
+            <span class="meter-title">Risk Probability vs Threshold</span>
+            <span class="meter-readout" id="meter-readout">—</span>
+          </div>
+          <div class="meter-track" role="progressbar" aria-label="Risk score progress" id="meter-track">
+            <div class="meter-fill" id="meter-fill"></div>
+            <div class="meter-pin" id="meter-pin">
+              <span class="meter-pin-label" id="meter-pin-label">—</span>
+            </div>
+          </div>
+          <div class="meter-scale" aria-hidden="true">
+            <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+          </div>
+        </div>
+
+        <!-- Result footer -->
+        <div class="result-footer">
+          <span class="model-tag">catboost_credit_risk · 20 features · threshold 0.4763</span>
+          <button class="btn-new" id="btn-new" type="button">← New Application</button>
+        </div>
+
+      </div>
+      <!-- /result-card -->
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+services:
+  ml-service:
+    build:
+      context: ./ml-service
+    ports:
+      - "${ML_PORT}:8000"
+    environment:
+      - APP_ENV=${APP_ENV}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway:
+    build:
+      context: ./gateway
+    ports:
+      - "${GATEWAY_PORT}:3000"
+    environment:
+      - ML_SERVICE_URL=${ML_SERVICE_URL}
+      - APP_ENV=${APP_ENV}
+    depends_on:
+      ml-service:
+        condition: service_healthy
