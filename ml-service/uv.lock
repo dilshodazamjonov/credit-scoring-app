@@ -377,7 +377,7 @@ wheels = [
 
 [[package]]
 name = "iv-woe-filter"
-version = "0.1.1"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "joblib" },
@@ -387,9 +387,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "twine" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8e/87/dea7b36bd7ff1c3a7b33b3c8049f5d085f7a22a8aa7cb92f2a63e9299e40/iv_woe_filter-0.1.1.tar.gz", hash = "sha256:2e70f5bd519d4c0133bf9f1d8fc7b61cf70a3ba3335de032e9a58ddc828e6007", size = 22756, upload-time = "2026-04-10T11:32:40.384Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/85/53bba7fc2c3fed194fd1fba84da8dc384476c44bb7baaa28b5186d053438/iv_woe_filter-0.2.0.tar.gz", hash = "sha256:304502ee65ce0d0a4c01c473b0b4f533fc7e274fe7c2209d9501908edaa146de", size = 29716, upload-time = "2026-04-17T10:54:05.63Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/72/1d/2acd5b643ca923325189766425192b1ee94b743a81f26f8eff9167eee7ba/iv_woe_filter-0.1.1-py3-none-any.whl", hash = "sha256:0e503cf40af41a52c2ac8c9d1ac84cfbf054c23fe42d7f87144e72704f6000ac", size = 15560, upload-time = "2026-04-10T11:32:39.386Z" },
+    { url = "https://files.pythonhosted.org/packages/c1/f4/f6b34f5b837de3862511b1832f338249d9661368c389927139702c6b388f/iv_woe_filter-0.2.0-py3-none-any.whl", hash = "sha256:e30eba7200794d6f52ac8e162b7496e90f8ece7ba778f04e67d916393b880cd1", size = 20671, upload-time = "2026-04-17T10:54:04.289Z" },
 ]
 
 [[package]]
@@ -614,7 +614,7 @@ dependencies = [
 requires-dist = [
     { name = "catboost", specifier = ">=1.2.10" },
     { name = "fastapi", specifier = ">=0.135.3" },
-    { name = "iv-woe-filter", specifier = ">=0.1.1" },
+    { name = "iv-woe-filter", specifier = "==0.2.0" },
     { name = "joblib", specifier = ">=1.5.3" },
     { name = "numpy", specifier = ">=2.4.4" },
     { name = "pandas", specifier = ">=3.0.2" },
