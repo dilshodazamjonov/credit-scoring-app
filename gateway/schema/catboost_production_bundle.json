@@ -1,14 +1,74 @@
 {
     "model_name": "catboost_credit_risk",
-    "threshold": 0.4762968274967872,
-    "required_features_count": 20,
+    "threshold": 0.4846241049909073,
+    "required_features_count": 40,
     "features": [
         {
-            "name": "AMT_ANNUITY",
+            "name": "AMT_CREDIT",
             "type": "number"
         },
         {
             "name": "AMT_GOODS_PRICE",
+            "type": "number"
+        },
+        {
+            "name": "BURO_AMT_CREDIT_SUM_DEBT_MEAN",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DAYS_CREDIT_ENDDATE_MAX",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DAYS_CREDIT_ENDDATE_SUM",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DAYS_CREDIT_MEAN",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DAYS_CREDIT_SUM",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DAYS_CREDIT_UPDATE_MAX",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DAYS_CREDIT_UPDATE_VAR",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DAYS_ENDDATE_FACT_MEAN",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DAYS_ENDDATE_FACT_MIN",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DEBT_CREDIT_DIFF_MAX",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DEBT_CREDIT_DIFF_MIN",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DEBT_RATIO_MAX",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DEBT_RATIO_MEAN",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DEBT_RATIO_SUM",
+            "type": "number"
+        },
+        {
+            "name": "BURO_DEBT_RATIO_VAR",
             "type": "number"
         },
         {
@@ -17,10 +77,6 @@
         },
         {
             "name": "DAYS_EMPLOYED",
-            "type": "number"
-        },
-        {
-            "name": "DAYS_LAST_PHONE_CHANGE",
             "type": "number"
         },
         {
@@ -36,51 +92,75 @@
             "type": "number"
         },
         {
+            "name": "INSTAL_DAYS_DIFF_SUM",
+            "type": "number"
+        },
+        {
+            "name": "INSTAL_IS_LATE_MEAN",
+            "type": "number"
+        },
+        {
+            "name": "INSTAL_PAYMENT_RATIO_MEAN",
+            "type": "number"
+        },
+        {
+            "name": "INSTAL_PAYMENT_RATIO_MIN",
+            "type": "number"
+        },
+        {
+            "name": "INSTAL_PAYMENT_RATIO_VAR",
+            "type": "number"
+        },
+        {
             "name": "OCCUPATION_TYPE",
             "type": "string"
         },
         {
-            "name": "REGION_RATING_CLIENT_W_CITY",
+            "name": "POS_MONTHS_BALANCE_MIN",
             "type": "number"
         },
         {
-            "name": "active_rate",
+            "name": "POS_MONTHS_BALANCE_VAR",
             "type": "number"
         },
         {
-            "name": "approval_rate",
+            "name": "PREV_DAYS_DECISION_VAR",
             "type": "number"
         },
         {
-            "name": "avg_days_credit",
+            "name": "PREV_DAYS_FIRST_DRAWING_SUM",
             "type": "number"
         },
         {
-            "name": "avg_debt_ratio",
+            "name": "PREV_DAYS_FIRST_DUE_MEAN",
             "type": "number"
         },
         {
-            "name": "avg_payment_ratio_y",
+            "name": "PREV_DAYS_FIRST_DUE_VAR",
             "type": "number"
         },
         {
-            "name": "avg_utilization",
+            "name": "PREV_DAYS_LAST_DUE_1ST_VERSION_MEAN",
             "type": "number"
         },
         {
-            "name": "late_rate",
+            "name": "PREV_INTEREST_ESTIMATE_MAX",
             "type": "number"
         },
         {
-            "name": "recent_credit_days",
+            "name": "PREV_INTEREST_ESTIMATE_MEAN",
             "type": "number"
         },
         {
-            "name": "rejection_rate",
+            "name": "PREV_INTEREST_ESTIMATE_MIN",
             "type": "number"
         },
         {
-            "name": "total_paid",
+            "name": "PREV_INTEREST_ESTIMATE_VAR",
+            "type": "number"
+        },
+        {
+            "name": "recent_decision_bureau",
             "type": "number"
         }
     ]

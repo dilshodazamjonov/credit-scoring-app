@@ -1,6 +1,9 @@
 ```
 └── 📁credit-scoring-app
     └── 📁frontend
+        ├── app.js
+        ├── index.html
+        ├── style.css
     └── 📁gateway
         └── 📁schema
             ├── catboost_production_bundle.json
@@ -16,12 +19,16 @@
             ├── feature_selection.py
             ├── pipeline.py
             ├── preprocessing.py
+        └── 📁test_src
+            ├── __init__.py
+            ├── fs.py
         ├── .python-version
         ├── Dockerfile
         ├── main.py
         ├── pyproject.toml
         ├── README.md
         ├── uv.lock
+    ├── .env
     ├── .gitignore
     ├── docker-compose.yaml
     ├── FolderSturcture.md

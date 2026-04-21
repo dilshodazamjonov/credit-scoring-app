@@ -100,30 +100,9 @@ CreditCore is a production-grade, microservices-based credit risk assessment sys
 
 ## Data Schema
 
-### Input Features (20 fields)
+### Input Features
 
-| Feature | Type | Description |
-|---------|------|-------------|
-| `AMT_ANNUITY` | number | Annuity payment amount |
-| `AMT_GOODS_PRICE` | number | Loan amount / goods price |
-| `DAYS_BIRTH` | number | Days since birth (negative) |
-| `DAYS_EMPLOYED` | number | Days at current employment |
-| `DAYS_LAST_PHONE_CHANGE` | number | Days since last phone change |
-| `EXT_SOURCE_1` | number | External credit score (0–1) |
-| `EXT_SOURCE_2` | number | External credit score (0–1) |
-| `EXT_SOURCE_3` | number | External credit score (0–1) |
-| `OCCUPATION_TYPE` | string | Applicant occupation |
-| `REGION_RATING_CLIENT_W_CITY` | number | Region risk rating (1–3) |
-| `active_rate` | number | Active credit utilization rate |
-| `approval_rate` | number | Historical approval rate |
-| `avg_days_credit` | number | Average credit history length |
-| `avg_debt_ratio` | number | Debt-to-income ratio |
-| `avg_payment_ratio_y` | number | Payment history ratio |
-| `avg_utilization` | number | Credit utilization percentage |
-| `late_rate` | number | Late payment frequency |
-| `recent_credit_days` | number | Days since recent credit inquiry |
-| `rejection_rate` | number | Historical rejection rate |
-| `total_paid` | number | Total amount repaid historically |
+Number of input fields are dynamically generated for the production, using js and Go lang endpoint
 
 ### Output Schema
 

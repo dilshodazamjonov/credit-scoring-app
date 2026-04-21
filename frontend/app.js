@@ -1,44 +1,22 @@
 /* ─────────────────────────────────────────────────────────────
    CreditCore · Loan Portal · app.js
-   All application logic: schema, form generation, prefill,
-   submission, and result rendering.
+   All application logic: schema fetching, form generation, 
+   prefill, submission, and result rendering.
 ───────────────────────────────────────────────────────────── */
 
 'use strict';
 
 /* ── API Config ──────────────────────────────────────────────── */
 const API_URL = 'http://localhost:3000/apply';
+const CONFIG_URL = 'http://localhost:3000/config';
 
-/* ── Model Schema ────────────────────────────────────────────── */
-const MODEL_SCHEMA = {
-  model_name: 'catboost_credit_risk',
-  threshold: 0.4762968274967872,
-  required_features_count: 20,
-  features: [
-    { name: 'AMT_ANNUITY',                   type: 'number' },
-    { name: 'AMT_GOODS_PRICE',               type: 'number' },
-    { name: 'DAYS_BIRTH',                    type: 'number' },
-    { name: 'DAYS_EMPLOYED',                 type: 'number' },
-    { name: 'DAYS_LAST_PHONE_CHANGE',        type: 'number' },
-    { name: 'EXT_SOURCE_1',                  type: 'number' },
-    { name: 'EXT_SOURCE_2',                  type: 'number' },
-    { name: 'EXT_SOURCE_3',                  type: 'number' },
-    { name: 'OCCUPATION_TYPE',               type: 'string' },
-    { name: 'REGION_RATING_CLIENT_W_CITY',   type: 'number' },
-    { name: 'active_rate',                   type: 'number' },
-    { name: 'approval_rate',                 type: 'number' },
-    { name: 'avg_days_credit',               type: 'number' },
-    { name: 'avg_debt_ratio',                type: 'number' },
-    { name: 'avg_payment_ratio_y',           type: 'number' },
-    { name: 'avg_utilization',               type: 'number' },
-    { name: 'late_rate',                     type: 'number' },
-    { name: 'recent_credit_days',            type: 'number' },
-    { name: 'rejection_rate',                type: 'number' },
-    { name: 'total_paid',                    type: 'number' },
-  ],
-};
+/* ── State ───────────────────────────────────────────────────── */
+let MODEL_SCHEMA = null;
 
 /* ── Field Display Metadata ──────────────────────────────────── */
+// Used to provide nice labels/placeholders for known features.
+// If the model returns a new feature not in this list, the app
+// will automatically format its name (e.g., "NEW_FEATURE_1" -> "New Feature 1").
 const FIELD_META = {
   AMT_ANNUITY:                  { label: 'Annuity Amount',         placeholder: 'e.g. 15000' },
   AMT_GOODS_PRICE:              { label: 'Goods / Property Price', placeholder: 'e.g. 180000' },
@@ -72,13 +50,6 @@ const OCCUPATIONS = [
 ];
 
 /* ── Test Scenarios ──────────────────────────────────────────── */
-/**
- * Values chosen to exercise the model at opposite ends.
- * GOOD  → all positive indicators (high EXT scores, long employment,
- *          low late/rejection rates, high approval).
- * RISK  → all negative indicators (low EXT scores, unemployed marker,
- *          high late/rejection rates, low approval).
- */
 const SCENARIOS = {
   good: {
     AMT_ANNUITY:                 15000,
@@ -106,7 +77,7 @@ const SCENARIOS = {
     AMT_ANNUITY:                 48000,
     AMT_GOODS_PRICE:             620000,
     DAYS_BIRTH:                  -11315,
-    DAYS_EMPLOYED:               365243,       // unemployed sentinel
+    DAYS_EMPLOYED:               365243,       
     DAYS_LAST_PHONE_CHANGE:      -25,
     EXT_SOURCE_1:                0.14,
     EXT_SOURCE_2:                0.19,
@@ -136,8 +107,30 @@ const btnSubmit   = $('btn-submit');
 const formError   = $('form-error');
 
 /* ────────────────────────────────────────────────────────────── */
+/*  INIT & CONFIG FETCH                                           */
+/* ────────────────────────────────────────────────────────────── */
+
+async function initApp() {
+  try {
+    const res = await fetch(CONFIG_URL);
+    if (!res.ok) throw new Error("Gateway configuration unavailable");
+    
+    MODEL_SCHEMA = await res.json();
+    buildForm();
+  } catch (err) {
+    showFormError(new Error("Could not connect to API. Is the Go Gateway running on port 3000?"));
+  }
+}
+
+/* ────────────────────────────────────────────────────────────── */
 /*  FORM BUILDER                                                  */
 /* ────────────────────────────────────────────────────────────── */
+
+function formatFallbackLabel(name) {
+  return name.toLowerCase().split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 function buildForm() {
   const gridNum = $('grid-number');
@@ -145,7 +138,10 @@ function buildForm() {
   let numCount = 0;
 
   MODEL_SCHEMA.features.forEach(feat => {
-    const meta = FIELD_META[feat.name] || { label: feat.name, placeholder: '' };
+    // Determine label: use mapped meta or format the raw variable name
+    const fallbackLabel = formatFallbackLabel(feat.name);
+    const meta = FIELD_META[feat.name] || { label: fallbackLabel, placeholder: '' };
+    
     const wrapper = document.createElement('div');
     wrapper.className = 'field';
 
@@ -154,7 +150,7 @@ function buildForm() {
     label.textContent = meta.label;
     wrapper.appendChild(label);
 
-    if (feat.type === 'string') {
+    if (feat.type === 'string' || feat.type === 'object') {
       const sel = document.createElement('select');
       sel.id = feat.name;
       sel.name = feat.name;
@@ -174,6 +170,7 @@ function buildForm() {
         sel.appendChild(opt);
       });
 
+      sel.addEventListener('change', () => sel.classList.remove('error'));
       wrapper.appendChild(sel);
       gridStr.appendChild(wrapper);
     } else {
@@ -183,19 +180,24 @@ function buildForm() {
       input.name = feat.name;
       input.step = 'any';
       input.required = true;
-      input.placeholder = meta.placeholder || '';
+      input.placeholder = meta.placeholder || '0.00';
 
-      // Remove error class on user input
       input.addEventListener('input', () => input.classList.remove('error'));
-
       wrapper.appendChild(input);
       gridNum.appendChild(wrapper);
       numCount++;
     }
   });
 
-  // Update field count label
-  $('num-field-count') && ($('num-field-count').textContent = `${numCount} fields`);
+  // Update dynamic counters
+  if ($('num-field-count')) {
+    $('num-field-count').textContent = `${numCount} fields`;
+  }
+  
+  const modelTag = document.querySelector('.model-tag');
+  if (modelTag) {
+    modelTag.textContent = `CatBoost · ${MODEL_SCHEMA.features.length} features · threshold ${MODEL_SCHEMA.threshold.toFixed(4)}`;
+  }
 }
 
 /* ────────────────────────────────────────────────────────────── */
@@ -203,16 +205,23 @@ function buildForm() {
 /* ────────────────────────────────────────────────────────────── */
 
 function fillScenario(type) {
+  if (!MODEL_SCHEMA) return;
   const data = SCENARIOS[type];
   if (!data) return;
 
   MODEL_SCHEMA.features.forEach(feat => {
     const el = $(feat.name);
     if (!el) return;
-    el.value = data[feat.name] ?? '';
-    el.classList.remove('error');
+    
+    // Safely apply fallback values if the scenario dictionary doesn't map a new feature
+    const val = data[feat.name];
+    if (val !== undefined) {
+      el.value = val;
+    } else {
+      el.value = (feat.type === 'number' || feat.type === 'float') ? 0 : '';
+    }
 
-    // Brief visual flash to signal update
+    el.classList.remove('error');
     el.classList.add('filled');
     setTimeout(() => el.classList.remove('filled'), 600);
   });
@@ -258,11 +267,12 @@ async function handleSubmit(e) {
 
   if (!validate()) return;
 
-  // Build payload — all keys at root level as required by the API
   const payload = {};
   MODEL_SCHEMA.features.forEach(feat => {
     const el = $(feat.name);
-    payload[feat.name] = feat.type === 'number' ? parseFloat(el.value) : el.value;
+    // Ensure numeric types are strictly parsed to avoid CatBoost casting errors
+    const isNumeric = feat.type === 'number' || feat.type === 'float' || feat.type === 'int';
+    payload[feat.name] = isNumeric ? parseFloat(el.value) : el.value;
   });
 
   setLoading(true);
@@ -285,9 +295,7 @@ async function handleSubmit(e) {
       throw new Error(data.message || `Unexpected status: ${data.status}`);
     }
 
-    // Short delay for perceived processing (feels more trustworthy)
     await sleep(420);
-
     setLoading(false);
     transitionToResult(data);
 
@@ -302,7 +310,6 @@ async function handleSubmit(e) {
 /* ────────────────────────────────────────────────────────────── */
 
 function transitionToResult(data) {
-  // 1. Fade form card out
   formCard.classList.add('exiting');
 
   setTimeout(() => {
@@ -352,7 +359,6 @@ function renderResult(data) {
 
   const fill = $('meter-fill');
   fill.className = 'meter-fill ' + (isApproved ? 'safe' : 'risky');
-  // Width set with a slight delay to trigger CSS transition
   requestAnimationFrame(() => {
     fill.style.width = Math.min(pct, 100) + '%';
   });
@@ -367,7 +373,6 @@ function renderResult(data) {
 /* ────────────────────────────────────────────────────────────── */
 
 function resetApp() {
-  // Reset meter fill immediately (no transition) before hiding
   const fill = $('meter-fill');
   fill.style.transition = 'none';
   fill.style.width = '0%';
@@ -376,7 +381,6 @@ function resetApp() {
 
   setTimeout(() => {
     formCard.style.display = '';
-    // Re-enable transition for next time
     fill.style.transition = '';
 
     requestAnimationFrame(() => {
@@ -399,7 +403,6 @@ function setLoading(on) {
   btnSubmit.disabled = on;
   btnSubmit.classList.toggle('loading', on);
 
-  // Disable all inputs while loading
   document.querySelectorAll('#loan-form input, #loan-form select')
     .forEach(el => { el.disabled = on; });
 }
@@ -432,13 +435,12 @@ function sleep(ms) {
 /* ────────────────────────────────────────────────────────────── */
 
 loanForm.addEventListener('submit', handleSubmit);
-
 $('btn-good').addEventListener('click', () => fillScenario('good'));
 $('btn-risk').addEventListener('click', () => fillScenario('risk'));
 $('btn-new').addEventListener('click', resetApp);
 
 /* ────────────────────────────────────────────────────────────── */
-/*  INIT                                                          */
+/*  BOOTSTRAP                                                     */
 /* ────────────────────────────────────────────────────────────── */
 
-buildForm();
+initApp();
