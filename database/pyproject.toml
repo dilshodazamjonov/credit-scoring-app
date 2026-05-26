@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "credit-scoring-database"
+version = "0.1.0"
+description = "CLI tools for loading raw credit-scoring CSVs into PostgreSQL."
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=3.0.2",
+    "psycopg2-binary>=2.9.12",
+    "python-dotenv>=1.1.1",
+    "sqlalchemy>=2.0.50",
+    "tqdm>=4.67.1",
+]
+
+[project.scripts]
+database = "dbtools.cli:main"
+
+[tool.hatch.build]
+exclude = [
+    ".venv",
+    "__pycache__",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dbtools"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/dbtools",
+    "pyproject.toml",
+]

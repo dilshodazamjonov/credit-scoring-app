@@ -1,4 +1,4 @@
-## Tomorrow's workflow
+## Day 1
 
 Keep tomorrow small. Create the tables in this order.
 
@@ -53,3 +53,20 @@ That is the beginning of real auditability.
 5. Add index on SK_ID_CURR.
 6. Test one query:
    SELECT * FROM ml.ml_applicant_features WHERE "SK_ID_CURR" = 100001;
+
+
+# Day 2 
+
+Tomorrow target
+
+Build one new executable:
+
+database create_ml_features --schema ml
+
+Its job:
+
+raw tables
+* → aggregate features
+* → one row per SK_ID_CURR
+* → save as ml.ml_applicant_features
+

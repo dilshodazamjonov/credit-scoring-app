@@ -1,0 +1,223 @@
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Mapping
+
+import pandas as pd
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
+from tqdm import tqdm
+
+PACKAGE_DIR = Path(__file__).resolve().parent
+DATABASE_DIR = PACKAGE_DIR.parents[1]
+REPO_ROOT = DATABASE_DIR.parent
+ENV_PATH = REPO_ROOT / ".env"
+DEFAULT_SCHEMA = "raw"
+DEFAULT_DB_NAME = "credit_scoring_db"
+DEFAULT_PATHS = {
+    "raw_application": DATABASE_DIR / "data" / "application_train.csv",
+    "raw_bureau": DATABASE_DIR / "data" / "bureau.csv",
+    "raw_previous_application": DATABASE_DIR / "data" / "previous_application.csv",
+    "raw_installments_payments": DATABASE_DIR / "data" / "installments_payments.csv",
+    "raw_credit_card_balance": DATABASE_DIR / "data" / "credit_card_balance.csv",
+    "raw_pos_cash_balance": DATABASE_DIR / "data" / "POS_CASH_balance.csv",
+}
+
+load_dotenv(ENV_PATH)
+
+
+@dataclass(frozen=True)
+class Credentials:
+    username: str
+    password: str
+    host: str
+    port: int
+    database: str
+
+
+@dataclass(frozen=True)
+class CheckReport:
+    credentials: Credentials
+    env_path: Path
+    paths: dict[str, Path]
+    schema_exists: bool
+
+
+def get_credentials() -> Credentials:
+    username = os.environ.get("db_username")
+    password = os.environ.get("db_password")
+    host = os.environ.get("db_host", "localhost")
+    port = int(os.environ.get("db_port", "5432"))
+    database = os.environ.get("db_name", DEFAULT_DB_NAME)
+
+    missing = []
+    if not username:
+        missing.append("db_username")
+    if not password:
+        missing.append("db_password")
+
+    if missing:
+        raise ValueError(f"Missing required database env vars: {', '.join(missing)}")
+
+    return Credentials(
+        username=username,
+        password=password,
+        host=host,
+        port=port,
+        database=database,
+    )
+
+
+def create_db_engine(credentials: Credentials) -> Engine:
+    connection_url = (
+        "postgresql+psycopg2://"
+        f"{credentials.username}:{credentials.password}"
+        f"@{credentials.host}:{credentials.port}/{credentials.database}"
+    )
+    return create_engine(connection_url)
+
+
+def check_credentials(
+    paths: Mapping[str, str | Path] | None = None,
+    *,
+    schema: str = DEFAULT_SCHEMA,
+) -> CheckReport:
+    resolved_paths = resolve_paths(paths or DEFAULT_PATHS)
+    missing_files = [str(path) for path in resolved_paths.values() if not path.exists()]
+    if missing_files:
+        raise FileNotFoundError(
+            "Missing CSV files required for raw loading: " + ", ".join(missing_files)
+        )
+
+    credentials = get_credentials()
+    engine = create_db_engine(credentials)
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
+        schema_exists = bool(
+            connection.execute(
+                text(
+                    """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.schemata
+                        WHERE schema_name = :schema_name
+                    )
+                    """
+                ),
+                {"schema_name": schema},
+            ).scalar_one()
+        )
+
+    return CheckReport(
+        credentials=credentials,
+        env_path=ENV_PATH,
+        paths=resolved_paths,
+        schema_exists=schema_exists,
+    )
+
+
+def load_raw_csvs_to_postgres(
+    engine: Engine,
+    paths: Mapping[str, str | Path],
+    *,
+    schema: str = DEFAULT_SCHEMA,
+    sample_rows: int = 1000,
+) -> None:
+    resolved_paths = resolve_paths(paths)
+    _ensure_schema(engine, schema)
+
+    for table_name, csv_path in tqdm(resolved_paths.items(), desc="Loading raw tables"):
+        columns = _create_table_from_sample(
+            engine,
+            table_name,
+            csv_path,
+            schema=schema,
+            sample_rows=sample_rows,
+        )
+        _copy_csv_to_table(
+            engine,
+            table_name,
+            csv_path,
+            columns,
+            schema=schema,
+        )
+
+
+def resolve_paths(paths: Mapping[str, str | Path]) -> dict[str, Path]:
+    resolved: dict[str, Path] = {}
+
+    for table_name, raw_path in paths.items():
+        path = Path(raw_path)
+        if path.is_absolute():
+            resolved[table_name] = path
+            continue
+
+        database_relative = (DATABASE_DIR / path).resolve()
+        repo_relative = (REPO_ROOT / path).resolve()
+        resolved[table_name] = database_relative if database_relative.exists() else repo_relative
+
+    return resolved
+
+
+def _ensure_schema(engine: Engine, schema: str) -> None:
+    with engine.begin() as connection:
+        connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {_quote_identifier(schema)}"))
+
+
+def _create_table_from_sample(
+    engine: Engine,
+    table_name: str,
+    csv_path: Path,
+    *,
+    schema: str,
+    sample_rows: int,
+) -> list[str]:
+    sample = pd.read_csv(csv_path, nrows=sample_rows, low_memory=False)
+    headers = sample.columns.tolist()
+    sample.head(0).to_sql(
+        table_name,
+        engine,
+        schema=schema,
+        if_exists="replace",
+        index=False,
+    )
+    return headers
+
+
+def _copy_csv_to_table(
+    engine: Engine,
+    table_name: str,
+    csv_path: Path,
+    columns: list[str],
+    *,
+    schema: str,
+) -> None:
+    quoted_columns = ", ".join(_quote_identifier(column) for column in columns)
+    quoted_table = f"{_quote_identifier(schema)}.{_quote_identifier(table_name)}"
+    copy_sql = (
+        f"COPY {quoted_table} ({quoted_columns}) "
+        "FROM STDIN WITH (FORMAT CSV, HEADER TRUE)"
+    )
+
+    raw_connection = engine.raw_connection()
+    try:
+        with raw_connection.cursor() as cursor:
+            with csv_path.open("r", encoding="utf-8", newline="") as csv_file:
+                cursor.copy_expert(copy_sql, csv_file)
+        raw_connection.commit()
+    except Exception:
+        raw_connection.rollback()
+        raise
+    finally:
+        raw_connection.close()
+
+
+def _quote_identifier(value: str) -> str:
+    return '"' + value.replace('"', '""') + '"'
+
+
+
+
