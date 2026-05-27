@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import argparse
 
-from dbtools.create_tables import create_ml_feature_snapshot_table
+from dbtools.create_tables import (
+    create_ml_feature_snapshot_table,
+    create_raw_link_indexes,
+)
 from dbtools.raw_loader import (
     DEFAULT_PATHS,
     check_credentials,
@@ -58,6 +61,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Schema to create the feature snapshot table in.",
     )
 
+    indexes_parser = subparsers.add_parser(
+        "create_raw_link_indexes",
+        aliases=["create-raw-link-indexes"],
+        help="Create join/link indexes for the raw tables.",
+    )
+    indexes_parser.add_argument(
+        "--schema",
+        default="raw",
+        help="Schema containing the raw tables.",
+    )
+
     return parser
 
 
@@ -104,6 +118,13 @@ def main() -> int:
         print(
             f'Created table "{args.schema}"."ml_feature_snapshot" if it did not exist.'
         )
+        return 0
+
+    if args.command in {"create_raw_link_indexes", "create-raw-link-indexes"}:
+        credentials = get_credentials()
+        engine = create_db_engine(credentials)
+        create_raw_link_indexes(engine, schema=args.schema)
+        print(f'Created raw-table link indexes in schema "{args.schema}".')
         return 0
 
     parser.error("Unknown command.")

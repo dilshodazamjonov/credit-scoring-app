@@ -21,4 +21,55 @@ def create_ml_feature_snapshot_table(engine, schema: str = "ml") -> None:
             )
         )
 
-    
+
+def create_raw_link_indexes(engine, schema: str = "raw") -> None:
+    statements = [
+        f'''
+        CREATE INDEX IF NOT EXISTS "ix_{schema}_raw_application_sk_id_curr"
+        ON "{schema}"."raw_application" ("SK_ID_CURR");
+        ''',
+        f'''
+        CREATE INDEX IF NOT EXISTS "ix_{schema}_raw_bureau_sk_id_curr"
+        ON "{schema}"."raw_bureau" ("SK_ID_CURR");
+        ''',
+        f'''
+        CREATE INDEX IF NOT EXISTS "ix_{schema}_raw_bureau_sk_id_bureau"
+        ON "{schema}"."raw_bureau" ("SK_ID_BUREAU");
+        ''',
+        f'''
+        CREATE INDEX IF NOT EXISTS "ix_{schema}_raw_previous_application_sk_id_curr"
+        ON "{schema}"."raw_previous_application" ("SK_ID_CURR");
+        ''',
+        f'''
+        CREATE INDEX IF NOT EXISTS "ix_{schema}_raw_previous_application_sk_id_prev"
+        ON "{schema}"."raw_previous_application" ("SK_ID_PREV");
+        ''',
+        f'''
+        CREATE INDEX IF NOT EXISTS "ix_{schema}_raw_installments_payments_sk_id_curr"
+        ON "{schema}"."raw_installments_payments" ("SK_ID_CURR");
+        ''',
+        f'''
+        CREATE INDEX IF NOT EXISTS "ix_{schema}_raw_installments_payments_sk_id_prev"
+        ON "{schema}"."raw_installments_payments" ("SK_ID_PREV");
+        ''',
+        f'''
+        CREATE INDEX IF NOT EXISTS "ix_{schema}_raw_credit_card_balance_sk_id_curr"
+        ON "{schema}"."raw_credit_card_balance" ("SK_ID_CURR");
+        ''',
+        f'''
+        CREATE INDEX IF NOT EXISTS "ix_{schema}_raw_credit_card_balance_sk_id_prev"
+        ON "{schema}"."raw_credit_card_balance" ("SK_ID_PREV");
+        ''',
+        f'''
+        CREATE INDEX IF NOT EXISTS "ix_{schema}_raw_pos_cash_balance_sk_id_curr"
+        ON "{schema}"."raw_pos_cash_balance" ("SK_ID_CURR");
+        ''',
+        f'''
+        CREATE INDEX IF NOT EXISTS "ix_{schema}_raw_pos_cash_balance_sk_id_prev"
+        ON "{schema}"."raw_pos_cash_balance" ("SK_ID_PREV");
+        ''',
+    ]
+
+    with engine.begin() as conn:
+        for statement in statements:
+            conn.execute(text(statement))
