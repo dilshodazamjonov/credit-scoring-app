@@ -146,6 +146,38 @@ def load_raw_csvs_to_postgres(
         )
 
 
+def load_single_raw_csv_to_postgres(
+    engine: Engine,
+    table_name: str,
+    *,
+    schema: str = DEFAULT_SCHEMA,
+    sample_rows: int = 1000,
+) -> None:
+    if table_name not in DEFAULT_PATHS:
+        valid_tables = ", ".join(sorted(DEFAULT_PATHS))
+        raise ValueError(
+            f"Unknown raw table '{table_name}'. Valid options: {valid_tables}"
+        )
+
+    resolved_paths = resolve_paths({table_name: DEFAULT_PATHS[table_name]})
+    csv_path = resolved_paths[table_name]
+    _ensure_schema(engine, schema)
+    columns = _create_table_from_sample(
+        engine,
+        table_name,
+        csv_path,
+        schema=schema,
+        sample_rows=sample_rows,
+    )
+    _copy_csv_to_table(
+        engine,
+        table_name,
+        csv_path,
+        columns,
+        schema=schema,
+    )
+
+
 def resolve_paths(paths: Mapping[str, str | Path]) -> dict[str, Path]:
     resolved: dict[str, Path] = {}
 
@@ -217,7 +249,6 @@ def _copy_csv_to_table(
 
 def _quote_identifier(value: str) -> str:
     return '"' + value.replace('"', '""') + '"'
-
 
 
 

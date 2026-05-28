@@ -1,7 +1,7 @@
 from sqlalchemy import text
+from sqlalchemy.engine import Engine
 
-
-def create_ml_feature_snapshot_table(engine, schema: str = "ml") -> None:
+def create_ml_feature_snapshot_table(engine: Engine, schema: str = "ml") -> None:
     with engine.begin() as conn:
         conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
         conn.execute(
@@ -22,7 +22,7 @@ def create_ml_feature_snapshot_table(engine, schema: str = "ml") -> None:
         )
 
 
-def create_raw_link_indexes(engine, schema: str = "raw") -> None:
+def create_raw_link_indexes(engine: Engine, schema: str = "raw") -> None:
     statements = [
         f'''
         CREATE INDEX IF NOT EXISTS "ix_{schema}_raw_application_sk_id_curr"

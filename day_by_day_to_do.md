@@ -59,7 +59,7 @@ That is the beginning of real auditability.
 
 Tomorrow target
 
-Build one new executable:
+Build one new executable:so
 
 database create_ml_features --schema ml
 
@@ -69,4 +69,9 @@ raw tables
 * → aggregate features
 * → one row per SK_ID_CURR
 * → save as ml.ml_applicant_features
+
+# Day 3 
+
+Add the logs 
+
 

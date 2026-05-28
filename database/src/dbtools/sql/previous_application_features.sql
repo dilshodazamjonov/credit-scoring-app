@@ -1,0 +1,31 @@
+DROP TABLE IF EXISTS "{ml_schema}"."stg_previous_application_features";
+
+CREATE TABLE "{ml_schema}"."stg_previous_application_features" AS
+WITH previous_enriched AS (
+    SELECT
+        "SK_ID_CURR",
+        "DAYS_DECISION",
+        NULLIF("DAYS_FIRST_DRAWING", 365243) AS "DAYS_FIRST_DRAWING",
+        NULLIF("DAYS_FIRST_DUE", 365243) AS "DAYS_FIRST_DUE",
+        NULLIF("DAYS_LAST_DUE_1ST_VERSION", 365243) AS "DAYS_LAST_DUE_1ST_VERSION",
+        CASE
+            WHEN "AMT_CREDIT" IS NULL OR "AMT_CREDIT" = 0 THEN NULL
+            WHEN "CNT_PAYMENT" IS NULL OR "AMT_ANNUITY" IS NULL THEN NULL
+            ELSE (("AMT_ANNUITY" * "CNT_PAYMENT") - "AMT_CREDIT") / "AMT_CREDIT"
+        END AS interest_estimate
+    FROM "{raw_schema}"."raw_previous_application"
+)
+SELECT
+    "SK_ID_CURR",
+    VAR_SAMP("DAYS_DECISION") AS "PREV_DAYS_DECISION_VAR",
+    SUM("DAYS_FIRST_DRAWING") AS "PREV_DAYS_FIRST_DRAWING_SUM",
+    AVG("DAYS_FIRST_DUE") AS "PREV_DAYS_FIRST_DUE_MEAN",
+    VAR_SAMP("DAYS_FIRST_DUE") AS "PREV_DAYS_FIRST_DUE_VAR",
+    AVG("DAYS_LAST_DUE_1ST_VERSION") AS "PREV_DAYS_LAST_DUE_1ST_VERSION_MEAN",
+    MAX(interest_estimate) AS "PREV_INTEREST_ESTIMATE_MAX",
+    AVG(interest_estimate) AS "PREV_INTEREST_ESTIMATE_MEAN",
+    MIN(interest_estimate) AS "PREV_INTEREST_ESTIMATE_MIN",
+    VAR_SAMP(interest_estimate) AS "PREV_INTEREST_ESTIMATE_VAR"
+FROM previous_enriched
+GROUP BY "SK_ID_CURR";
+
