@@ -7,9 +7,11 @@ from typing import Mapping
 
 import pandas as pd
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import URL, create_engine, text
 from sqlalchemy.engine import Engine
 from tqdm import tqdm
+
+from dbtools.logging_utils import get_logger, log_step
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 DATABASE_DIR = PACKAGE_DIR.parents[1]
@@ -27,6 +29,7 @@ DEFAULT_PATHS = {
 }
 
 load_dotenv(ENV_PATH)
+logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -62,6 +65,13 @@ def get_credentials() -> Credentials:
     if missing:
         raise ValueError(f"Missing required database env vars: {', '.join(missing)}")
 
+    logger.info(
+        "db_credentials_loaded database=%s host=%s port=%s user=%s",
+        database,
+        host,
+        port,
+        username,
+    )
     return Credentials(
         username=username,
         password=password,
@@ -72,12 +82,21 @@ def get_credentials() -> Credentials:
 
 
 def create_db_engine(credentials: Credentials) -> Engine:
-    connection_url = (
-        "postgresql+psycopg2://"
-        f"{credentials.username}:{credentials.password}"
-        f"@{credentials.host}:{credentials.port}/{credentials.database}"
+    connection_url = URL.create(
+        "postgresql+psycopg2",
+        username=credentials.username,
+        password=credentials.password,
+        host=credentials.host,
+        port=credentials.port,
+        database=credentials.database,
     )
-    return create_engine(connection_url)
+    logger.info(
+        "db_engine_create database=%s host=%s port=%s",
+        credentials.database,
+        credentials.host,
+        credentials.port,
+    )
+    return create_engine(connection_url, pool_pre_ping=True)
 
 
 def check_credentials(
@@ -94,22 +113,29 @@ def check_credentials(
 
     credentials = get_credentials()
     engine = create_db_engine(credentials)
-    with engine.connect() as connection:
-        connection.execute(text("SELECT 1"))
-        schema_exists = bool(
-            connection.execute(
-                text(
-                    """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM information_schema.schemata
-                        WHERE schema_name = :schema_name
-                    )
-                    """
-                ),
-                {"schema_name": schema},
-            ).scalar_one()
-        )
+    with log_step(
+        logger,
+        "db_healthcheck",
+        schema=schema,
+        files=len(resolved_paths),
+    ):
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+            schema_exists = bool(
+                connection.execute(
+                    text(
+                        """
+                        SELECT EXISTS (
+                            SELECT 1
+                            FROM information_schema.schemata
+                            WHERE schema_name = :schema_name
+                        )
+                        """
+                    ),
+                    {"schema_name": schema},
+                ).scalar_one()
+            )
+    engine.dispose()
 
     return CheckReport(
         credentials=credentials,
@@ -129,21 +155,21 @@ def load_raw_csvs_to_postgres(
     resolved_paths = resolve_paths(paths)
     _ensure_schema(engine, schema)
 
-    for table_name, csv_path in tqdm(resolved_paths.items(), desc="Loading raw tables"):
-        columns = _create_table_from_sample(
-            engine,
-            table_name,
-            csv_path,
-            schema=schema,
-            sample_rows=sample_rows,
-        )
-        _copy_csv_to_table(
-            engine,
-            table_name,
-            csv_path,
-            columns,
-            schema=schema,
-        )
+    with log_step(
+        logger,
+        "raw_load_batch",
+        schema=schema,
+        tables=len(resolved_paths),
+        sample_rows=sample_rows,
+    ):
+        for table_name, csv_path in tqdm(resolved_paths.items(), desc="Loading raw tables"):
+            _load_single_table(
+                engine,
+                table_name,
+                csv_path,
+                schema=schema,
+                sample_rows=sample_rows,
+            )
 
 
 def load_single_raw_csv_to_postgres(
@@ -162,19 +188,12 @@ def load_single_raw_csv_to_postgres(
     resolved_paths = resolve_paths({table_name: DEFAULT_PATHS[table_name]})
     csv_path = resolved_paths[table_name]
     _ensure_schema(engine, schema)
-    columns = _create_table_from_sample(
+    _load_single_table(
         engine,
         table_name,
         csv_path,
         schema=schema,
         sample_rows=sample_rows,
-    )
-    _copy_csv_to_table(
-        engine,
-        table_name,
-        csv_path,
-        columns,
-        schema=schema,
     )
 
 
@@ -190,6 +209,7 @@ def resolve_paths(paths: Mapping[str, str | Path]) -> dict[str, Path]:
         database_relative = (DATABASE_DIR / path).resolve()
         repo_relative = (REPO_ROOT / path).resolve()
         resolved[table_name] = database_relative if database_relative.exists() else repo_relative
+        logger.debug("path_resolved table=%s path=%s", table_name, resolved[table_name])
 
     return resolved
 
@@ -197,6 +217,45 @@ def resolve_paths(paths: Mapping[str, str | Path]) -> dict[str, Path]:
 def _ensure_schema(engine: Engine, schema: str) -> None:
     with engine.begin() as connection:
         connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {_quote_identifier(schema)}"))
+    logger.info("schema_ensured schema=%s", schema)
+
+
+def _load_single_table(
+    engine: Engine,
+    table_name: str,
+    csv_path: Path,
+    *,
+    schema: str,
+    sample_rows: int,
+) -> None:
+    with log_step(
+        logger,
+        "raw_table_load",
+        schema=schema,
+        table=table_name,
+        path=csv_path,
+    ):
+        columns = _create_table_from_sample(
+            engine,
+            table_name,
+            csv_path,
+            schema=schema,
+            sample_rows=sample_rows,
+        )
+        row_count = _copy_csv_to_table(
+            engine,
+            table_name,
+            csv_path,
+            columns,
+            schema=schema,
+        )
+        logger.info(
+            "raw_table_loaded schema=%s table=%s columns=%s rows=%s",
+            schema,
+            table_name,
+            len(columns),
+            row_count,
+        )
 
 
 def _create_table_from_sample(
@@ -207,6 +266,13 @@ def _create_table_from_sample(
     schema: str,
     sample_rows: int,
 ) -> list[str]:
+    logger.info(
+        "raw_table_sample schema=%s table=%s sample_rows=%s path=%s",
+        schema,
+        table_name,
+        sample_rows,
+        csv_path,
+    )
     sample = pd.read_csv(csv_path, nrows=sample_rows, low_memory=False)
     headers = sample.columns.tolist()
     sample.head(0).to_sql(
@@ -226,7 +292,7 @@ def _copy_csv_to_table(
     columns: list[str],
     *,
     schema: str,
-) -> None:
+) -> int:
     quoted_columns = ", ".join(_quote_identifier(column) for column in columns)
     quoted_table = f"{_quote_identifier(schema)}.{_quote_identifier(table_name)}"
     copy_sql = (
@@ -240,6 +306,8 @@ def _copy_csv_to_table(
             with csv_path.open("r", encoding="utf-8", newline="") as csv_file:
                 cursor.copy_expert(copy_sql, csv_file)
         raw_connection.commit()
+        row_count = _fetch_row_count(engine, table_name, schema=schema)
+        return row_count
     except Exception:
         raw_connection.rollback()
         raise
@@ -247,8 +315,15 @@ def _copy_csv_to_table(
         raw_connection.close()
 
 
+def _fetch_row_count(engine: Engine, table_name: str, *, schema: str) -> int:
+    sql = text(
+        f'SELECT COUNT(*) FROM {_quote_identifier(schema)}.{_quote_identifier(table_name)}'
+    )
+    with engine.connect() as connection:
+        return int(connection.execute(sql).scalar_one())
+
+
 def _quote_identifier(value: str) -> str:
     return '"' + value.replace('"', '""') + '"'
-
 
 

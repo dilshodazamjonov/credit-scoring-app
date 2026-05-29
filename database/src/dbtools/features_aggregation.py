@@ -5,6 +5,8 @@ from pathlib import Path
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
 
+from dbtools.logging_utils import get_logger, log_step
+
 SQL_DIR = Path(__file__).resolve().parent / "sql"
 SQL_PIPELINE = [
     "application_base.sql",
@@ -14,6 +16,7 @@ SQL_PIPELINE = [
     "previous_application_features.sql",
     "final_ml_applicant_features.sql",
 ]
+logger = get_logger(__name__)
 
 
 def build_ml_applicant_features(
@@ -22,10 +25,17 @@ def build_ml_applicant_features(
     raw_schema: str = "raw",
     ml_schema: str = "ml",
 ) -> None:
-    with engine.begin() as conn:
-        conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{ml_schema}"'))
-        for sql_file in SQL_PIPELINE:
-            _run_sql_file(conn, sql_file, raw_schema=raw_schema, ml_schema=ml_schema)
+    with log_step(
+        logger,
+        "ml_features_build",
+        raw_schema=raw_schema,
+        ml_schema=ml_schema,
+        steps=len(SQL_PIPELINE),
+    ):
+        with engine.begin() as conn:
+            conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{ml_schema}"'))
+            for sql_file in SQL_PIPELINE:
+                _run_sql_file(conn, sql_file, raw_schema=raw_schema, ml_schema=ml_schema)
 
 
 def agg_application_base(
@@ -119,11 +129,19 @@ def _run_sql_file(
     raw_schema: str,
     ml_schema: str,
 ) -> None:
-    sql = (SQL_DIR / sql_file).read_text(encoding="utf-8").format(
-        raw_schema=_quote_identifier(raw_schema),
-        ml_schema=_quote_identifier(ml_schema),
-    )
-    conn.exec_driver_sql(sql)
+    sql_path = SQL_DIR / sql_file
+    with log_step(
+        logger,
+        "sql_pipeline_step",
+        file=sql_file,
+        raw_schema=raw_schema,
+        ml_schema=ml_schema,
+    ):
+        sql = sql_path.read_text(encoding="utf-8").format(
+            raw_schema=_quote_identifier(raw_schema),
+            ml_schema=_quote_identifier(ml_schema),
+        )
+        conn.exec_driver_sql(sql)
 
 
 def _quote_identifier(value: str) -> str:

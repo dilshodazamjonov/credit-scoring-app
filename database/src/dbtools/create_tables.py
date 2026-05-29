@@ -1,25 +1,31 @@
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
+from dbtools.logging_utils import get_logger, log_step
+
+logger = get_logger(__name__)
+
+
 def create_ml_feature_snapshot_table(engine: Engine, schema: str = "ml") -> None:
-    with engine.begin() as conn:
-        conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
-        conn.execute(
-            text(
-                f'''
-                CREATE TABLE IF NOT EXISTS "{schema}"."ml_feature_snapshot" (
-                    snapshot_id UUID PRIMARY KEY,
-                    applicant_id BIGINT NOT NULL,
-                    feature_version TEXT NOT NULL,
-                    features_json JSONB NOT NULL,
-                    feature_count INT NOT NULL,
-                    source_application_rows INT DEFAULT 0,
-                    source_bureau_rows INT DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-                '''
+    with log_step(logger, "create_feature_snapshot_table", schema=schema):
+        with engine.begin() as conn:
+            conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+            conn.execute(
+                text(
+                    f'''
+                    CREATE TABLE IF NOT EXISTS "{schema}"."ml_feature_snapshot" (
+                        snapshot_id UUID PRIMARY KEY,
+                        applicant_id BIGINT NOT NULL,
+                        feature_version TEXT NOT NULL,
+                        features_json JSONB NOT NULL,
+                        feature_count INT NOT NULL,
+                        source_application_rows INT DEFAULT 0,
+                        source_bureau_rows INT DEFAULT 0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                    '''
+                )
             )
-        )
 
 
 def create_raw_link_indexes(engine: Engine, schema: str = "raw") -> None:
@@ -70,6 +76,12 @@ def create_raw_link_indexes(engine: Engine, schema: str = "raw") -> None:
         ''',
     ]
 
-    with engine.begin() as conn:
-        for statement in statements:
-            conn.execute(text(statement))
+    with log_step(
+        logger,
+        "create_raw_link_indexes",
+        schema=schema,
+        indexes=len(statements),
+    ):
+        with engine.begin() as conn:
+            for statement in statements:
+                conn.execute(text(statement))

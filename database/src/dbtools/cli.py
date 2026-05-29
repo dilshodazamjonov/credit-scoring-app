@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from dbtools.create_tables import (
     create_ml_feature_snapshot_table,
     create_raw_link_indexes,
 )
 from dbtools.features_aggregation import build_ml_applicant_features
+from dbtools.logging_utils import configure_logging, get_logger, log_step
 from dbtools.raw_loader import (
     DEFAULT_PATHS,
     check_credentials,
@@ -16,11 +18,18 @@ from dbtools.raw_loader import (
     load_single_raw_csv_to_postgres,
 )
 
+logger = get_logger(__name__)
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="database",
         description="Database ETL and validation commands.",
+    )
+    parser.add_argument(
+        "--log-level",
+        default=None,
+        help="Override DBTOOLS_LOG_LEVEL for this run.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -124,9 +133,21 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+    configure_logging(args.log_level)
+    try:
+        return _dispatch_command(args, parser)
+    except Exception as exc:
+        logger.exception("command_failed command=%s", args.command)
+        print(f"database command failed: {exc}", file=sys.stderr)
+        return 1
+
+
+def _dispatch_command(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    logger.info("command_start command=%s", args.command)
 
     if args.command in {"check_credentials", "check-credentials"}:
-        report = check_credentials(DEFAULT_PATHS, schema=args.schema)
+        with log_step(logger, "command_check_credentials", schema=args.schema):
+            report = check_credentials(DEFAULT_PATHS, schema=args.schema)
         print(f"Environment file: {report.env_path}")
         print(
             "Database: "
@@ -140,30 +161,39 @@ def main() -> int:
         print(f"CSV files: {len(report.paths)} found")
         for table_name, path in report.paths.items():
             print(f"  {table_name}: {path}")
+        logger.info("command_success command=%s", args.command)
         return 0
 
     if args.command in {"load_raw_files", "load-raw-files"}:
         credentials = get_credentials()
         engine = create_db_engine(credentials)
-        load_raw_csvs_to_postgres(
-            engine,
-            DEFAULT_PATHS,
-            schema=args.schema,
-            sample_rows=args.sample_rows,
-        )
+        try:
+            load_raw_csvs_to_postgres(
+                engine,
+                DEFAULT_PATHS,
+                schema=args.schema,
+                sample_rows=args.sample_rows,
+            )
+        finally:
+            engine.dispose()
         print(f"Loaded {len(DEFAULT_PATHS)} raw tables into schema '{args.schema}'.")
+        logger.info("command_success command=%s", args.command)
         return 0
 
     if args.command in {"load_raw_file", "load-raw-file"}:
         credentials = get_credentials()
         engine = create_db_engine(credentials)
-        load_single_raw_csv_to_postgres(
-            engine,
-            args.table,
-            schema=args.schema,
-            sample_rows=args.sample_rows,
-        )
+        try:
+            load_single_raw_csv_to_postgres(
+                engine,
+                args.table,
+                schema=args.schema,
+                sample_rows=args.sample_rows,
+            )
+        finally:
+            engine.dispose()
         print(f"Loaded raw table '{args.table}' into schema '{args.schema}'.")
+        logger.info("command_success command=%s table=%s", args.command, args.table)
         return 0
 
     if args.command in {
@@ -172,31 +202,43 @@ def main() -> int:
     }:
         credentials = get_credentials()
         engine = create_db_engine(credentials)
-        create_ml_feature_snapshot_table(engine, schema=args.schema)
+        try:
+            create_ml_feature_snapshot_table(engine, schema=args.schema)
+        finally:
+            engine.dispose()
         print(
             f'Created table "{args.schema}"."ml_feature_snapshot" if it did not exist.'
         )
+        logger.info("command_success command=%s", args.command)
         return 0
 
     if args.command in {"create_raw_link_indexes", "create-raw-link-indexes"}:
         credentials = get_credentials()
         engine = create_db_engine(credentials)
-        create_raw_link_indexes(engine, schema=args.schema)
+        try:
+            create_raw_link_indexes(engine, schema=args.schema)
+        finally:
+            engine.dispose()
         print(f'Created raw-table link indexes in schema "{args.schema}".')
+        logger.info("command_success command=%s", args.command)
         return 0
 
     if args.command in {"create_ml_features", "create-ml-features"}:
         credentials = get_credentials()
         engine = create_db_engine(credentials)
-        build_ml_applicant_features(
-            engine,
-            raw_schema=args.raw_schema,
-            ml_schema=args.schema,
-        )
+        try:
+            build_ml_applicant_features(
+                engine,
+                raw_schema=args.raw_schema,
+                ml_schema=args.schema,
+            )
+        finally:
+            engine.dispose()
         print(
             f'Built "{args.schema}"."ml_applicant_features" from '
             f'"{args.raw_schema}" raw tables.'
         )
+        logger.info("command_success command=%s", args.command)
         return 0
 
     parser.error("Unknown command.")
