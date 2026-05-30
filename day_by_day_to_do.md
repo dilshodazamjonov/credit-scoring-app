@@ -74,4 +74,51 @@ raw tables
 
 Add the logs 
 
+# Day 4 
 
+SK_ID_CURR
+* → fetch row from ml.ml_applicant_features
+* → align with trained model features
+* → run model.predict_proba()
+* → save result
+
+enable the command 
+```
+database score_applicant --applicant-id 100001
+```
+
+# Day 5
+
+Tomorrow target
+
+Keep it small again.
+
+### 1. Create `ml_score_request`
+
+This table should record that a score was requested.
+
+Do not build the API yet.
+
+```sql
+CREATE TABLE IF NOT EXISTS ml_score_request (
+    request_id UUID PRIMARY KEY,
+    applicant_id BIGINT NOT NULL,
+    requested_by TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 2. Keep the goal in mind
+
+Later this table will let Go create a request first, then Python score it.
+
+That means you will be able to say:
+
+Request X was created for applicant Y by user Z at time T.
+
+### 3. In short
+1. Create `ml_score_request`.
+2. Keep status simple like `pending`, `completed`, `failed`.
+3. Insert one test row manually.
+4. Query it back from PostgreSQL.

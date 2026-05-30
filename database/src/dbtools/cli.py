@@ -9,6 +9,7 @@ from dbtools.create_tables import (
 )
 from dbtools.features_aggregation import build_ml_applicant_features
 from dbtools.logging_utils import configure_logging, get_logger, log_step
+from dbtools.pd_calc_db import score_applicant_from_db
 from dbtools.raw_loader import (
     DEFAULT_PATHS,
     check_credentials,
@@ -127,6 +128,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="Schema containing the raw source tables.",
     )
 
+    score_parser = subparsers.add_parser(
+        "calculate_pd",
+        aliases=["calculate-pd"],
+        help="Score one applicant from ml_applicant_features and save the result.",
+    )
+    score_parser.add_argument(
+        "--applicant-id",
+        required=True,
+        type=int,
+        help="Applicant SK_ID_CURR to score.",
+    )
+    score_parser.add_argument(
+        "--schema",
+        default="ml",
+        help="Schema containing ml_applicant_features and ml_score_result.",
+    )
+    score_parser.add_argument(
+        "--raw-schema",
+        default="raw",
+        help="Schema containing raw source tables for snapshot audit counts.",
+    )
+    score_parser.add_argument(
+        "--table",
+        default="ml_applicant_features",
+        help="Applicant feature table name.",
+    )
+    score_parser.add_argument(
+        "--snapshot-id",
+        default=None,
+        help="Optional linked feature snapshot UUID.",
+    )
+
     return parser
 
 
@@ -237,6 +270,30 @@ def _dispatch_command(args: argparse.Namespace, parser: argparse.ArgumentParser)
         print(
             f'Built "{args.schema}"."ml_applicant_features" from '
             f'"{args.raw_schema}" raw tables.'
+        )
+        logger.info("command_success command=%s", args.command)
+        return 0
+
+    if args.command in {"calculate_pd", "calculate-pd"}:
+        credentials = get_credentials()
+        engine = create_db_engine(credentials)
+        try:
+            score_result = score_applicant_from_db(
+                engine,
+                args.applicant_id,
+                schema=args.schema,
+                raw_schema=args.raw_schema,
+                table_name=args.table,
+                snapshot_id=args.snapshot_id,
+            )
+        finally:
+            engine.dispose()
+        print(
+            f"Applicant {score_result.application_id} scored: "
+            f"pd={score_result.pd_score:.6f}, "
+            f"band={score_result.score_band}, "
+            f"threshold={score_result.threshold:.6f}, "
+            f"score_id={score_result.score_id}"
         )
         logger.info("command_success command=%s", args.command)
         return 0

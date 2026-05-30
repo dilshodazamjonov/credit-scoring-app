@@ -8,8 +8,13 @@ version = "0.1.0"
 description = "CLI tools for loading raw credit-scoring CSVs into PostgreSQL."
 requires-python = ">=3.11"
 dependencies = [
+    "catboost>=1.2.10",
+    "joblib>=1.5.3",
+    "iv-woe-filter==0.2.0",
+    "numpy>=2.4.4",
     "pandas>=3.0.2",
     "psycopg2-binary>=2.9.12",
+    "scikit-learn>=1.8.0",
     "python-dotenv>=1.1.1",
     "sqlalchemy>=2.0.50",
     "tqdm>=4.67.1",
